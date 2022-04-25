@@ -11,10 +11,22 @@ Contains scripts developed to analyze mass spectrometry (MS) data in a user-frie
 - `analysis_MS.py` creates volcano plots using MS data. Requires multiple user inputs which are requested interactively during execution. 
 - `msenv.yml` provides a virtual environment used for this code. Add virtual enviornment using `conda env create --file=msenv.yml`
 
+### Molecular_Dynamics
+Contains multiple scripts written to enable molecular dynamics simulations using GROMACS. 
+- `cgenff_charmm2gmx_py3_nx2.py` converts ligand parameters (from CGenFF) to GROMACS format. Slightly adapted from [the Mackerell lab](mackerell.umaryland.edu/download.php?filename=CHARMM_ff_params_files/cgenff_charmm2gmx.py)
+- `gen_complex.py` creates a `complex.gro` from `protein.gro` & `ligand.gro`, which are processed using `pdb2gmx`
+- `gen_restraints.py` inserts all ligand restraints into `topol.top`.
+- `gen_topology.py` inserts ligand topologies into `topol.top`.
+- `parse_xvg.py` generates simple lineplots from resulting .xvg files produced by GROMACS.
+- `replicates.py` starts analysis of replicates in single experiment. WIP. 
+- `simulation_*.sh` are the shell scripts for submitting simulation to HPC via `sbatch`.
+- `swap_codes.py` enables quick swapping of ligand/protein codes (or anything else really) w/i files. Simplifies simulation setup significantly (somewhat surprisingly, given it's so simple). Provide input code using `-i`, output code using `-o`, & all files for which you want to swap the two using `-f`. 
+- `*.mdp` scripts provide the parameters for each part of the simulation. 
+
 ## RFR
 - `fxn_RFR.py` enables simple constructions & validation of a time-series random forest model using the `build_model` class. 
 - `env_RFR.yml` provides a virtual environment for simple use of code. Just clone & go. 
 
 ## SQL
 - `fxn_SQL.py` provides a `pull_SQL()` function which acts as a wrapper for simple SQL pulls. Great for folks who don't know SQL well but need to access server quickly... Will need slight modifications if manual user credentials required. 
-- `env_SQL.py` provides a virtual environment for simple use of code. Just clone & go. 
+- `env_SQL.py` provides a virtual environment for simple use of code. Just clone & go.\
