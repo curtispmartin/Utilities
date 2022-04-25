@@ -15,12 +15,8 @@
 **/*.xlsx
 **/*.zip
 __pycache__/*
-Admin/*
-Archive/*
-Deliverables/*
-Output/*
-References/*
-Utils/__pycache__/*
-.vscode/launch.json
-.vscode/settings.json
-GarbacikE_FHA_workspace.code-workspace
+**/Archive/*
+**/Data/*
+***/Output/
+
+**/*.DS_Store
