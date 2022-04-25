@@ -11,7 +11,7 @@ Contains scripts developed to analyze mass spectrometry (MS) data in a user-frie
 - `analysis_MS.py` creates volcano plots using MS data. Requires multiple user inputs which are requested interactively during execution. 
 - `msenv.yml` provides a virtual environment used for this code. Add virtual enviornment using `conda env create --file=msenv.yml`
 
-### Molecular_Dynamics
+## Molecular_Dynamics
 Contains multiple scripts written to enable molecular dynamics simulations using GROMACS. 
 - `cgenff_charmm2gmx_py3_nx2.py` converts ligand parameters (from CGenFF) to GROMACS format. Slightly adapted from [the Mackerell lab](mackerell.umaryland.edu/download.php?filename=CHARMM_ff_params_files/cgenff_charmm2gmx.py)
 - `gen_complex.py` creates a `complex.gro` from `protein.gro` & `ligand.gro`, which are processed using `pdb2gmx`
