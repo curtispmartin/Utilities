@@ -12,7 +12,7 @@ Contains scripts developed to analyze mass spectrometry (MS) data in a user-frie
 - `msenv.yml` provides a virtual environment used for this code. Add virtual enviornment using `conda env create --file=msenv.yml`
 
 ## RFR
--`fxn_RFR.py` enables simple constructions & validation of a time-series random forest model using the `build_model` class. 
+- `fxn_RFR.py` enables simple constructions & validation of a time-series random forest model using the `build_model` class. 
 - `env_RFR.yml` provides a virtual environment for simple use of code. Just clone & go. 
 
 ## SQL
