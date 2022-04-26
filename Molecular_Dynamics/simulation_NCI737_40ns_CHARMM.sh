@@ -156,6 +156,11 @@ python parse_xvg.py data/dist_P8V_168-1.xvg data/dist_P8V_168-2.xvg
 gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resname P8V and name F35' -sel 'resid 139 and name CB' -o data/dist_P8VF_139.xvg -tu ns
 python parse_xvg.py data/dist_P8VF_139.xvg
 
+### calculate rmsf
+echo C-alpha | gmx rmsf -s md.tpr -f md_clean.xtc -o data/md_rmsf.xvg
+python parse_xvg.py data/md_rmsf.xvg
+
+
 ### count hydrogen bonds b/w protein & ligand
 { echo 1; echo 13; } | gmx hbond -s md.tpr -f md_clean.xtc -num data/md_hbnum.xvg -tu ns
 python parse_xvg.py data/md_hbnum.xvg

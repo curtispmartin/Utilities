@@ -3,7 +3,14 @@
 """
 Created on Wed Apr 13 11:07:38 2022
 
-@author: martincup
+@author: Curtis P. Martin
+
+This script is meant to aggregate replicate MD experiments in a simplem manner. 
+
+Arguments required:
+    -f provides the processed .csv data file of interest (from `parse_xvg.py`)
+    -e provides the experiment name (should match the directory)
+    --omit enables the user to omit replicates from analysis
 """
 
 ### import modules
@@ -14,7 +21,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 ### parse user inputs... FOR CODE DEVELOPMENT ONLY
-# l_inputs = ['replicates.py', '-f', 'md_rmsd_processed.csv', '-e', '01-CPD63', '--omit', '01', '02']
+# l_inputs = ['replicates.py', '-f', 'md_rmsd_NAI_processed.csv', '-e', '01-CPD63', '--omit', '01', '02']
 
 ### get user input
 l_inputs = sys.argv

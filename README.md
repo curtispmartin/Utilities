@@ -13,12 +13,13 @@ Contains scripts developed to analyze mass spectrometry (MS) data in a user-frie
 
 ## Molecular_Dynamics
 Contains multiple scripts written to enable molecular dynamics simulations using GROMACS. 
-- `cgenff_charmm2gmx_py3_nx2.py` converts ligand parameters (from CGenFF) to GROMACS format. Slightly adapted from [the Mackerell lab](mackerell.umaryland.edu/download.php?filename=CHARMM_ff_params_files/cgenff_charmm2gmx.py)
+- `cgenff_charmm2gmx_py3_nx2.py` converts ligand parameters (from CGenFF) to GROMACS format. Slightly adapted from [the Mackerell lab](mackerell.umaryland.edu/download.php?filename=CHARMM_ff_params_files/cgenff_charmm2gmx.py).
+- `comp_replicates.py` compares data generated from two different experiments, both done in replicate. WIP. 
 - `gen_complex.py` creates a `complex.gro` from `protein.gro` & `ligand.gro`, which are processed using `pdb2gmx`
 - `gen_restraints.py` inserts all ligand restraints into `topol.top`.
 - `gen_topology.py` inserts ligand topologies into `topol.top`.
 - `parse_xvg.py` generates simple lineplots from resulting .xvg files produced by GROMACS.
-- `replicates.py` starts analysis of replicates in single experiment. WIP. 
+- `plot_replicates.py` starts analysis of replicates in single experiment. WIP. 
 - `simulation_*.sh` are the shell scripts for submitting simulation to HPC via `sbatch`.
 - `swap_codes.py` enables quick swapping of ligand/protein codes (or anything else really) w/i files. Simplifies simulation setup significantly (somewhat surprisingly, given it's so simple). Provide input code using `-i`, output code using `-o`, & all files for which you want to swap the two using `-f`. 
 - `*.mdp` scripts provide the parameters for each part of the simulation. 

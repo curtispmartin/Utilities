@@ -156,12 +156,16 @@ gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resname 9YA and name O38' -sel 'res
 gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resname 9YA and name O37' -sel 'resid 168 and name NH2' -o data/dist_9YA_168-2.xvg -tu ns
 python parse_xvg.py data/dist_9YA_168-1.xvg data/dist_9YA_168-2.xvg
 
+### calculate rmsf
+echo C-alpha | gmx rmsf -s md.tpr -f md_clean.xtc -o data/md_rmsf.xvg
+python parse_xvg.py data/md_rmsf.xvg
+
 ### count hydrogen bonds b/w protein & ligand
 { echo 1; echo 13; } | gmx hbond -s md.tpr -f md_clean.xtc -num data/md_hbnum.xvg -tu ns
 python parse_xvg.py data/md_hbnum.xvg
 
 ### calculate solvent-accessible surface area
-echo 18 | gmx sasa -s md.tpr -f md_clean.xtc -o data/md_sasa.xvg -b 20 -tu ns
+echo 18 | gmx sasa -s md.tpr -f md_clean.xtc -o data/md_sasa.xvg -tu ns
 python parse_xvg.py data/md_sasa.xvg
 
 ### run quick cluster analysis on backbone
