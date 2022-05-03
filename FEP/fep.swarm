@@ -1,0 +1,22 @@
+#SWARM --job-name Tutorial_6 
+#SWARM --module python,gromacs
+#SWARM --time 12:00:00 
+#SWARM --sbatch '--constraint=x2695'
+
+WD=$(pwd); \
+cd $WD/EM; \
+gmx grompp -f em.mdp -c $WD/methane_water.gro -p $WD/topol.top -o em.tpr; \
+gmx mdrun -ntmpi 1 -deffnm em; \
+sleep 10; \
+cd $WD/NVT; \
+gmx grompp -f nvt.mdp -c $WD/EM/em.gro -p $WD/topol.top -o nvt.tpr; \
+gmx mdrun -ntmpi 1 -deffnm nvt; \
+sleep 10; \
+cd $WD/NPT; \
+gmx grompp -f npt.mdp -c $WD/NVT/nvt.gro -p $WD/topol.top -t $WD/NVT/nvt.cpt -o npt.tpr; \
+gmx mdrun -ntmpi 1 -deffnm npt; \
+sleep 10; \
+cd $WD/MD; \
+gmx grompp -f md.mdp -c $WD/NPT/npt.gro -p $WD/topol.top -t $WD/NPT/npt.cpt -o md.tpr; \
+gmx mdrun -ntmpi 1 -deffnm md; \
+cd $WD

@@ -1,0 +1,26 @@
+#SWARM --job-name Tutorial_6 
+#SWARM --module python,gromacs
+#SWARM --partition=multinode
+#SWARM --threads-per-process 1
+#SWARM --noht
+#SWARM --exclusive
+#SWARM --time 6:00:00 
+#SWARM --sbatch '--nodes=8 --ntasks-per-node=28 --ntasks-per-core=1 --ntasks=224 --constraint=x2695'
+
+WD=$(pwd); \
+cd $WD/EM; \
+gmx grompp -f em.mdp -c $WD/methane_water.gro -p $WD/topol.top -o em.tpr; \
+mpirun -np $SLURM_NTASKS `which mdrun_mpi` -deffnm em; \
+sleep 10; \
+cd $WD/NVT; \
+gmx grompp -f nvt.mdp -c $WD/EM/em.gro -p $WD/topol.top -o nvt.tpr; \
+mpirun -np $SLURM_NTASKS `which mdrun_mpi` -deffnm nvt; \
+sleep 10; \
+cd $WD/NPT; \
+gmx grompp -f npt.mdp -c $WD/NVT/nvt.gro -p $WD/topol.top -t $WD/NVT/nvt.cpt -o npt.tpr; \
+mpirun -np $SLURM_NTASKS `which mdrun_mpi` -deffnm npt; \
+sleep 10; \
+cd $WD/MD; \
+gmx grompp -f md.mdp -c $WD/NPT/npt.gro -p $WD/topol.top -t $WD/NPT/npt.cpt -o md.tpr; \
+mpirun -np $SLURM_NTASKS `which mdrun_mpi` -deffnm md; \
+cd $WD

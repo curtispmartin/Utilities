@@ -40,7 +40,7 @@ for line in l_topol:
 
 ### insert ligand restraints
 s_ligrestrheader = '\n; Include position restraints\n#ifdef POSRES'
-idx_counter = idx_ligtopol + len(l_inputs) + 1
+idx_counter = idx_ligtopol + len(l_inputs) - 1 # len(l_inputs) = restraint files + 2 (.py & .top files)
 l_topol.insert(idx_counter, s_ligrestrheader)
 idx_counter += 1
 for ligand in l_ligands:
