@@ -7,6 +7,7 @@ Created on Mon Feb  7 12:49:57 2022
 """
 
 ### import packages
+import os
 import sys
 
 import numpy as np
@@ -20,32 +21,44 @@ import statsmodels.formula.api as sm
 
 ##### CALL DATA
 #----------------------------------------------------------------------------#
+### get & format user inputs
+l_inputs = sys.argv
+file = l_inputs[l_inputs.index('-f') + 1].split('.')[0]
+lum_cell = int(l_inputs[l_inputs.index('--ref') + 1])
+
+### give exception if options not properly defined
+if '-f' not in l_inputs:
+    raise Exception('Warning! No filepath detected. Exiting...\n')
+if '--ref' not in l_inputs:
+    raise Exception('Warning! No reference column detected. Exiting...\n')
+
 ### call data
-# file = 'MitoVES/CellTiterGlo 22Rv1 MitoVES 72h 2-7-22'
-file = '20220317-1_BCA'
 data = pd.read_excel(f'{file}.xlsx', index_col='Unnamed: 0')
 #----------------------------------------------------------------------------#
 
 
-##### SET PARAMETERS
+##### SET PARAMETERS (STANDARDS SET NOW)
 #----------------------------------------------------------------------------#
 ### set volume of sample in wellS
 vol_cell = 1 # in ul... IS THIS NEEDED THOUGH? RETHINK.
 
 ### set location of 'Reference' column (i.e. BCA standard)
-lum_cell = 11
+# lum_cell = 11
 
 ### set dilution concentrations & volumes
 vol_dil = 60 # ul
 conc_dil = 1 # ug/ul
 
 ### set volume percentage desired for lysis buffer addition
-conc_lys = 0.20 # at this point, 20% is the default
+conc_lys = 0.20 
 #----------------------------------------------------------------------------#
 
 
 ##### GENERATE OUTPUTS
 #----------------------------------------------------------------------------#
+### update data
+data = data.rename(columns={lum_cell:'Reference'})
+
 ### build regression model for reference curve
 model = sm.ols(formula='Concentration ~ Reference', data=data).fit() # concentration in ug/ml (ml NOT ul)
 print(model.summary())
@@ -70,6 +83,7 @@ ax.set_title(f'Regression Plot\n({file})\n')
 ax.set_xlabel('Reference Signal [Abs]')
 ax.set_ylabel('Concentration [ug/ul]')
 
+plt.savefig(f'{file}_regression.png', bbox_inches='tight', dpi=300)
 plt.show()
 
 
@@ -127,7 +141,7 @@ df_conc_vol_lys = vol_dil - df_conc_vol - vol_load
 df_vol_means = pd.DataFrame.from_dict({'Loading':vol_load, 'Lysis':df_conc_vol_lys.mean(), 'Sample':df_conc_vol.mean()})
 df_vol_means['Total'] = df_vol_means.sum(axis=1)
 df_vol_means.index.name = 'Columns'
-# df_vol_means = df_vol_means.dropna()
+df_vol_means = df_vol_means.dropna()
 print(f'\n\nVolumes needed:\n\n{df_vol_means}')
 df_vol_means.T.to_excel(f'{file}_processed.xlsx')
 #----------------------------------------------------------------------------#
