@@ -3,11 +3,11 @@
 # Author: Curtis P. Martin
 
 #---------------------------------------------------#
-##### RUN 5NS MD SIMULATION FOR LDHA TETRAMER (5W8L) W/ SINGLE SUBUNIT (A) BOUND TO LIGAND (9YA) & COFACTOR (NAI) USING TEMPERATURE REPLICA EXCHANGE
+##### RUN 5NS MD SIMULATION FOR LDHA TETRAMER (5W8L) W/ SINGLE SUBUNIT (A) BOUND TO LIGAND (9YA) & COFACTOR (NAI) USING REPLICA EXCHANGE W/ SOLUTE SCALING (REST2)
 #---------------------------------------------------#
 
 ### batch submission parameters
-#SBATCH --job-name TEST-SETUP
+#SBATCH --job-name TEST-160-REST2
 #SBATCH --mail-type END
 #SBATCH --partition=multinode
 #SBATCH --constraint=x2695
@@ -60,7 +60,7 @@ for path in */;
         python Scripts/gen_topology.py topol.top 9YA.gro NAI.gro
 
 ### create unit cell
-        gmx editconf -f complex.gro -o newbox.gro -bt cubic -d 2.0
+        gmx editconf -f complex.gro -o newbox.gro -bt cubic -d 1.0
 
 ### add solvent
         gmx solvate -cp newbox.gro -cs spc216.gro -p topol.top -o solv.gro
@@ -88,7 +88,7 @@ for path in */;
     done
 
 ### run multi-directory minimization in preparation for REST2
-mpirun -np $SLURM_NTASKS `which mdrun_mpi` -deffnm em -multidir 0[012]
+mpirun -np $SLURM_NTASKS `which mdrun_mpi` -deffnm em -multidir 0[012] # AUTOMATE REPLICA DEFINITION
 #---------------------------------------------------#
 
 
@@ -185,7 +185,7 @@ for path in */;
         python Scripts/mark_hottop.py processed.top Protein_chain_A 9YA NAI
 
 ### scale pre-processed topology for REST2
-        plumed partial_tempering 1.0 < processed.top > scaled.top # automate scaling factor
+        plumed partial_tempering 1.0 < processed.top > scaled.top # AUTOMATE SCALING FACTOR
         mv scaled.top scaled_bad.top
         head -n -11 scaled_bad.top > scaled.top # DUMB
 
@@ -196,26 +196,102 @@ for path in */;
     done
 
 ### run multi-directory REST2 
-mpirun -np $SLURM_NTASKS `which mdrun_mpi` -deffnm md -plumed Setup/plumed.dat -multidir 0[012] -replex 500 -hrex -dlb no -dhdl dhdl.xvg
+mpirun -np $SLURM_NTASKS `which mdrun_mpi` -deffnm md -plumed Setup/plumed.dat -multidir 0[012] -replex 160 -hrex -dlb no -dhdl dhdl.xvg
+#---------------------------------------------------#
+
+
+##### RUN SOME PRELIMINARY DATA ANALYSIS
+#---------------------------------------------------#
+### loop through folders for analysis
+for path in */;
+    do
+    
+### clean up trajectory for analysis
+        { echo Protein; echo System; } | gmx trjconv -s md.tpr -f md.xtc -o md_clean.xtc -center -pbc nojump -ur compact
+        { echo Protein; echo System; } | gmx trjconv -s md.tpr -f md_clean.xtc -o md_fit.xtc -fit rot+trans
+
+### calculate RMSD over simulation for protein
+        { echo Backbone; echo Backbone; } | gmx rms -s md.tpr -f md_clean.xtc -o md_rmsd.xvg -tu ns
+        python parse_xvg.py md_rmsd.xvg
+
+### calculate RMSD over simulation for ligand (9YA)
+        { echo 13; echo 13; } | gmx rms -s md.tpr -f md_clean.xtc -o md_rmsd_9YA.xvg -tu ns
+        python parse_xvg.py md_rmsd_9YA.xvg
+
+### calculate RMSD over simulation for cofactor (NAI)
+        { echo 14; echo 14; } | gmx rms -s md.tpr -f md_clean.xtc -o md_rmsd_NAI.xvg -tu ns
+        python parse_xvg.py md_rmsd_NAI.xvg
+
+### calculate distance b/w ligand & cofactor
+        gmx pairdist -s md.tpr -f md_clean.xtc  -ref 'resname 9YA and name C31 N32 C33 C34 S35' -sel 'resname NAI and name N1N C2N C3N C4N C5N C6N' -o dist_9YA_NAI.xvg
+        python parse_xvg.py dist_9YA_NAI.xvg
+
+### calculate distance b/w ligand & residues where halogen bond might exist in P8V
+        gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resname 9YA and name H06' -sel 'resid 139 and name CB' -o dist_9YAH_139.xvg -tu ns
+        python parse_xvg.py dist_9YAH_139.xvg
+
+### calculate distances b/w important residues
+        gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resid 102 and name CA' -sel 'resid 238 and name CD2' -o dist_102_238.xvg -tu ns
+        gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resid 103 and name CA' -sel 'resid 241 and name CA' -o dist_103_241.xvg -tu ns
+        gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resid 105 and name CA' -sel 'resid 137 and name CA' -o dist_105_137.xvg -tu ns
+        gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resid 108 and name CA' -sel 'resid 238 and name CA' -o dist_108_238.xvg -tu ns
+        
+        python parse_xvg.py dist_102_238.xvg
+        python parse_xvg.py dist_103_241.xvg
+        python parse_xvg.py dist_105_137.xvg
+        python parse_xvg.py dist_108_238.xvg
+        python parse_xvg.py dist_102_238.xvg dist_103_241.xvg dist_105_137.xvg dist_108_238.xvg
+
+### calculate distances b/w ligand & residues
+        gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resname 9YA and name O38' -sel 'resid 168 and name NH1' -o dist_9YA_168-1.xvg -tu ns
+        gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resname 9YA and name O37' -sel 'resid 168 and name NH2' -o dist_9YA_168-2.xvg -tu ns
+        python parse_xvg.py dist_9YA_168-1.xvg dist_9YA_168-2.xvg
+
+### count hydrogen bonds b/w protein & ligand
+        { echo 1; echo 13; } | gmx hbond -s md.tpr -f md_clean.xtc -num md_hbnum.xvg -tu ns
+        python parse_xvg.py md_hbnum.xvg
+
+### calculate solvent-accessible surface area
+        echo 18 | gmx sasa -s md.tpr -f md_clean.xtc -o md_sasa.xvg -tu ns
+        python parse_xvg.py md_sasa.xvg
+        cd ..
+        
+    done
 #---------------------------------------------------#
 
 
 ##### CLEAN UP THE DIRECTORY
 #---------------------------------------------------#
+### loop through folders for clean up
+for path in */;
+    do
+
 ### move data to directory
-mkdir Data
-mv *.csv Data/
-mv *.xvg Data/
+        mkdir Data
+        mv *.csv Data/
+        mv *.log Data/
+        mv *.xvg Data/
 
 ### move results to directory
-mkdir Results
-mv *.png Results/
+        mkdir Results
+        mv *.png Results/
+        mv *.txt Results/
 
-### move simulation files to directory
-mkdir Output
-mv *.gro Output/
-mv *.itp Output/
-mv *.prm Output/
-mv *.top Output/
+### move simulation files to directory & zip them up for simpler IO
+        mkdir Output
+        mv *.cpt Output/
+        mv *.edr Output/
+        mv *.gro Output/
+        mv *.itp Output/
+        mv *.ndx Output/
+        mv *.prm Output/
+        mv *.top Output/
+        mv *.trr Output/
+        
+        tar -czvf output.tar.gz Output/
+        rm -r Output/
+        cd ..
+        
+    done
 #---------------------------------------------------#
 

@@ -17,8 +17,8 @@ import seaborn as sns
 
 ### set directories
 dir_work = os.getcwd()
-dir_data = dir_work + '/data'
-dir_results = dir_work + '/results'
+dir_data = dir_work + '/Data'
+dir_results = dir_work + '/Results'
 
 ### create function for transforming .xvg data
 def parse_XVG(l_filenames=None):
