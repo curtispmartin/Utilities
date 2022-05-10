@@ -234,7 +234,7 @@ for idx in ${!list_p[@]}
         echo $path
             
 ### clean up trajectory for analysis
-        { echo Protein; echo System; } | gmx trjconv -s md.tpr -f md.xtc -o md_clean.xtc -center -pbc nojump -ur compact
+        { echo Protein; echo System; } | gmx trjconv -s md.tpr -f md.xtc -o md_clean.xtc -center -pbc mol -ur compact
 #         { echo Protein; echo System; } | gmx trjconv -s md.tpr -f md_clean.xtc -o md_fit.xtc -fit rot+trans
 
 ### calculate RMSD over simulation for protein

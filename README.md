@@ -39,7 +39,7 @@ Contains scripts developed to analyze mass spectrometry (MS) data in a user-frie
 Contains all scripts required to run replica exchange w/ solute scaling (REST2) simulations in GROMACS. NOTE: Plumed extension is required. 
 - `mark_hottop.py` marks atoms desired to participate in replica exchange using Plumed syntax. Requires definition of molecules of interest; right now limited to complete molecules. 
 - `sim-rest2.sh` implements REST2 in HPC via SLURM. 
-All other code pulled (or slightly modified) from **MD** scripts. 
+All other code pulled (or slightly modified) from **MD** scripts, though the IO has been improved significantly.  
 
 -----
 
