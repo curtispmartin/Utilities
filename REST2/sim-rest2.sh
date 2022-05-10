@@ -7,7 +7,7 @@
 #---------------------------------------------------#
 
 ### batch submission parameters
-#SBATCH --job-name TEST-160-REST2
+#SBATCH --job-name REST2-CPD63
 #SBATCH --mail-type END
 #SBATCH --partition=multinode
 #SBATCH --constraint=x2695
@@ -26,17 +26,32 @@ module load gromacs/2018.3+plumed2.5b
 module load python
 
 
+##### SET REST2 PARAMETERS
+#---------------------------------------------------#
+### set effective temperature range 
+smin=0.3
+smax=1.0
+
+### set number of replicas based on how many directories present
+nrep=$(find . -mindepth 1 -maxdepth 1 -type d | wc -l | bc)
+
+### generate scaling factors using geometric distribution
+list_s=$(awk -v n=$nrep -v smin=$smin -v smax=$smax 'BEGIN{ for(i=0;i<n;i++){ s=smin*exp(i*log(smax/smin)/(n-1)); printf(s); if(i<n-1)printf(","); } }')
+IFS=',' read -r -a list_s <<< "$list_s"
+
+### get paths to replicas
+list_p=($(echo */))
+#---------------------------------------------------#
+
+
 ##### PREPARE STRUCTURES FOR SIMULATION
 #---------------------------------------------------#
-### count number of directories in working
-# nrep=$(find . -type d -printf x -maxdepth 1 | wc -c)
-# (($nrep--))
-
 ### loop through folders for EM
-for path in */;
+for idx in ${!list_p[@]}
     do
 
 ### change directory
+        path=${list_p[idx]}
         cd $path
         echo $path
 
@@ -95,10 +110,11 @@ mpirun -np $SLURM_NTASKS `which mdrun_mpi` -deffnm em -multidir 0[012] # AUTOMAT
 ##### RUN NVT EQUILIBRATION
 #---------------------------------------------------#
 ### loop through folders for NVT
-for path in */;
+for idx in ${!list_p[@]}
     do
 
 ### change directory
+        path=${list_p[idx]}
         cd $path
         echo $path
 
@@ -132,7 +148,7 @@ for path in */;
 
     done
 
-### run multi-directory NVT in preparation for replica exchange
+### run multi-directory NVT in preparation for REST2
 mpirun -np $SLURM_NTASKS `which mdrun_mpi` -deffnm nvt -multidir 0[012]
 #---------------------------------------------------#
 
@@ -140,14 +156,16 @@ mpirun -np $SLURM_NTASKS `which mdrun_mpi` -deffnm nvt -multidir 0[012]
 ##### RUN NPT EQUILIBRATION
 #---------------------------------------------------#
 ### loop through folders for NPT
-for path in */;
+for idx in ${!list_p[@]}
     do
 
 ### change directory
+        path=${list_p[idx]}
         cd $path
+        echo $path
 
 ### prepare NPT equilibration
-        gmx grompp -f Setup/npt.mdp -c nvt.gro -t nvt.cpt -r nvt.gro -p topol.top -n index.ndx -o npt.tpr
+#         gmx grompp -f Setup/npt.mdp -c nvt.gro -t nvt.cpt -r nvt.gro -p topol.top -pp processed.top -n index.ndx -o npt.tpr
 
 ### mark "hot" atoms for REST2 (i.e. the solute)
 #         python Scripts/mark_hottop.py processed.top Protein_chain_A 9YA NAI
@@ -172,11 +190,16 @@ mpirun -np $SLURM_NTASKS `which mdrun_mpi` -deffnm npt -multidir 0[012]
 ##### RUN REPLICA EXCHANGE W/ SOLUTE SCALING (REST2)
 #---------------------------------------------------#
 ### loop through folders for REST2
-for path in */;
+for idx in ${!list_p[@]}
     do
 
+### define replica & path to replica
+        path=${list_p[idx]}
+        scale=${list_s[$nrep-1-idx]}
+        
 ### change directory
         cd $path
+        echo $idx, $path, $scale
 
 ### prepare REST2 execution
         gmx grompp -f Setup/md.mdp -c npt.gro -t npt.cpt -p topol.top -pp processed.top -n index.ndx -o md.tpr
@@ -185,50 +208,54 @@ for path in */;
         python Scripts/mark_hottop.py processed.top Protein_chain_A 9YA NAI
 
 ### scale pre-processed topology for REST2
-        plumed partial_tempering 1.0 < processed.top > scaled.top # AUTOMATE SCALING FACTOR
+        plumed partial_tempering $scale < processed.top > scaled.top # AUTOMATE SCALING FACTOR
         mv scaled.top scaled_bad.top
         head -n -11 scaled_bad.top > scaled.top # DUMB
 
 ### regenerate .tpr file using scaled topology
-        gmx grompp -f Setup/md.mdp -c npt.gro -t npt.cpt -p scaled.top -n index.ndx -o md.tpr
+        gmx grompp -f Setup/md.mdp -c npt.gro -t npt.cpt -p scaled.top -n index.ndx -o md.tpr -maxwarn 1
         cd ..
 
     done
 
 ### run multi-directory REST2 
-mpirun -np $SLURM_NTASKS `which mdrun_mpi` -deffnm md -plumed Setup/plumed.dat -multidir 0[012] -replex 160 -hrex -dlb no -dhdl dhdl.xvg
+mpirun -np $SLURM_NTASKS `which mdrun_mpi` -deffnm md -plumed Setup/plumed.dat -multidir 0[012] -replex 100 -hrex -dlb no -dhdl dhdl.xvg -nstlist 10
 #---------------------------------------------------#
 
 
 ##### RUN SOME PRELIMINARY DATA ANALYSIS
 #---------------------------------------------------#
 ### loop through folders for analysis
-for path in */;
+for idx in ${!list_p[@]}
     do
-    
+
+### change directory
+        path=${list_p[idx]} 
+        echo $path
+            
 ### clean up trajectory for analysis
         { echo Protein; echo System; } | gmx trjconv -s md.tpr -f md.xtc -o md_clean.xtc -center -pbc nojump -ur compact
-        { echo Protein; echo System; } | gmx trjconv -s md.tpr -f md_clean.xtc -o md_fit.xtc -fit rot+trans
+#         { echo Protein; echo System; } | gmx trjconv -s md.tpr -f md_clean.xtc -o md_fit.xtc -fit rot+trans
 
 ### calculate RMSD over simulation for protein
         { echo Backbone; echo Backbone; } | gmx rms -s md.tpr -f md_clean.xtc -o md_rmsd.xvg -tu ns
-        python parse_xvg.py md_rmsd.xvg
+        python Scripts/parse_xvg.py md_rmsd.xvg
 
 ### calculate RMSD over simulation for ligand (9YA)
         { echo 13; echo 13; } | gmx rms -s md.tpr -f md_clean.xtc -o md_rmsd_9YA.xvg -tu ns
-        python parse_xvg.py md_rmsd_9YA.xvg
+        python Scripts/parse_xvg.py md_rmsd_9YA.xvg
 
 ### calculate RMSD over simulation for cofactor (NAI)
         { echo 14; echo 14; } | gmx rms -s md.tpr -f md_clean.xtc -o md_rmsd_NAI.xvg -tu ns
-        python parse_xvg.py md_rmsd_NAI.xvg
+        python Scripts/parse_xvg.py md_rmsd_NAI.xvg
 
 ### calculate distance b/w ligand & cofactor
         gmx pairdist -s md.tpr -f md_clean.xtc  -ref 'resname 9YA and name C31 N32 C33 C34 S35' -sel 'resname NAI and name N1N C2N C3N C4N C5N C6N' -o dist_9YA_NAI.xvg
-        python parse_xvg.py dist_9YA_NAI.xvg
+        python Scripts/parse_xvg.py dist_9YA_NAI.xvg
 
 ### calculate distance b/w ligand & residues where halogen bond might exist in P8V
         gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resname 9YA and name H06' -sel 'resid 139 and name CB' -o dist_9YAH_139.xvg -tu ns
-        python parse_xvg.py dist_9YAH_139.xvg
+        python Scripts/parse_xvg.py dist_9YAH_139.xvg
 
 ### calculate distances b/w important residues
         gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resid 102 and name CA' -sel 'resid 238 and name CD2' -o dist_102_238.xvg -tu ns
@@ -236,24 +263,24 @@ for path in */;
         gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resid 105 and name CA' -sel 'resid 137 and name CA' -o dist_105_137.xvg -tu ns
         gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resid 108 and name CA' -sel 'resid 238 and name CA' -o dist_108_238.xvg -tu ns
         
-        python parse_xvg.py dist_102_238.xvg
-        python parse_xvg.py dist_103_241.xvg
-        python parse_xvg.py dist_105_137.xvg
-        python parse_xvg.py dist_108_238.xvg
-        python parse_xvg.py dist_102_238.xvg dist_103_241.xvg dist_105_137.xvg dist_108_238.xvg
+        python Scripts/parse_xvg.py dist_102_238.xvg
+        python Scripts/parse_xvg.py dist_103_241.xvg
+        python Scripts/parse_xvg.py dist_105_137.xvg
+        python Scripts/parse_xvg.py dist_108_238.xvg
+        python Scripts/parse_xvg.py dist_102_238.xvg dist_103_241.xvg dist_105_137.xvg dist_108_238.xvg
 
 ### calculate distances b/w ligand & residues
         gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resname 9YA and name O38' -sel 'resid 168 and name NH1' -o dist_9YA_168-1.xvg -tu ns
         gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resname 9YA and name O37' -sel 'resid 168 and name NH2' -o dist_9YA_168-2.xvg -tu ns
-        python parse_xvg.py dist_9YA_168-1.xvg dist_9YA_168-2.xvg
+        python Scripts/parse_xvg.py dist_9YA_168-1.xvg dist_9YA_168-2.xvg
 
 ### count hydrogen bonds b/w protein & ligand
         { echo 1; echo 13; } | gmx hbond -s md.tpr -f md_clean.xtc -num md_hbnum.xvg -tu ns
-        python parse_xvg.py md_hbnum.xvg
+        python Scripts/parse_xvg.py md_hbnum.xvg
 
 ### calculate solvent-accessible surface area
         echo 18 | gmx sasa -s md.tpr -f md_clean.xtc -o md_sasa.xvg -tu ns
-        python parse_xvg.py md_sasa.xvg
+        python Scripts/parse_xvg.py md_sasa.xvg
         cd ..
         
     done
@@ -263,9 +290,13 @@ for path in */;
 ##### CLEAN UP THE DIRECTORY
 #---------------------------------------------------#
 ### loop through folders for clean up
-for path in */;
+for idx in ${!list_p[@]}
     do
 
+### change directory
+        path=${list_p[idx]}
+        echo $path
+        
 ### move data to directory
         mkdir Data
         mv *.csv Data/
@@ -279,16 +310,19 @@ for path in */;
 
 ### move simulation files to directory & zip them up for simpler IO
         mkdir Output
+        mv *# Output/
         mv *.cpt Output/
         mv *.edr Output/
         mv *.gro Output/
         mv *.itp Output/
+        mv *.mdp Output/
         mv *.ndx Output/
+        mv *.pdb Output/
         mv *.prm Output/
         mv *.top Output/
         mv *.trr Output/
         
-        tar -czvf output.tar.gz Output/
+        tar -czvf Output.tar.gz Output/
         rm -r Output/
         cd ..
         

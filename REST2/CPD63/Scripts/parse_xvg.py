@@ -17,8 +17,8 @@ import seaborn as sns
 
 ### set directories
 dir_work = os.getcwd()
-dir_data = dir_work + '/Data'
-dir_results = dir_work + '/Results'
+# dir_data = dir_work + '/Data'
+# dir_results = dir_work + '/Results'
 
 ### create function for transforming .xvg data
 def parse_XVG(l_filenames=None):
@@ -111,7 +111,8 @@ else:
 
 ax.set_xlim([df[df.columns[0]].min(), df[df.columns[0]].max()])
 ax.set_title(title)
-plt.savefig(f'{dir_results}/{plotname}.png', bbox_inches='tight', dpi=300)
+# plt.savefig(f'{dir_results}/{plotname}.png', bbox_inches='tight', dpi=300)
+plt.savefig(f'{plotname}.png', bbox_inches='tight', dpi=300)
 
 
 
