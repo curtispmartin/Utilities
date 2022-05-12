@@ -3,19 +3,20 @@
 # Author: Curtis P. Martin
 
 #---------------------------------------------------#
-##### RUN 5NS MD SIMULATION FOR LDHA TETRAMER (5W8L) W/ SINGLE SUBUNIT (A) BOUND TO LIGAND (9YA) & COFACTOR (NAI) USING REPLICA EXCHANGE W/ SOLUTE SCALING (REST2)
+##### RUN 5NS MD SIMULATION FOR LDHA TETRAMER (6Q13) W/ SINGLE SUBUNIT (A) BOUND TO LIGAND (P8V) & COFACTOR (NAI) USING REPLICA EXCHANGE W/ SOLUTE SCALING (REST2)
 #---------------------------------------------------#
 
 ### batch submission parameters
-#SBATCH --job-name REST2-CPD63
-#SBATCH --mail-type END
+#SBATCH --job-name REST2_NCI-737
+#SBATCH --mail-type BEGIN,END
+#SBATCH --mail-user=cpmart405@gmail.com
 #SBATCH --partition=multinode
 #SBATCH --constraint=x2695
 #SBATCH --time=48:00:00
-#SBATCH --nodes=12
+#SBATCH --nodes=20
 #SBATCH --ntasks-per-node=28
 #SBATCH --ntasks-per-core=1
-#SBATCH --ntasks=336
+#SBATCH --ntasks=560
 #SBATCH --no-requeue
 #SBATCH --error=output.txt
 #SBATCH --output=output.txt
@@ -33,46 +34,47 @@ smin=0.3
 smax=1.0
 
 ### set number of replicas based on how many directories present
-nrep=$(find . -mindepth 1 -maxdepth 1 -type d | wc -l | bc)
+REPS=$(find . -mindepth 1 -maxdepth 1 -type d -print0 | xargs -0 ls -d) # get replica directories & sort numerically
+NREP=$(echo $REPS | wc -l | bc) # get number of replicas as defined by directories
 
 ### generate scaling factors using geometric distribution
-list_s=$(awk -v n=$nrep -v smin=$smin -v smax=$smax 'BEGIN{ for(i=0;i<n;i++){ s=smin*exp(i*log(smax/smin)/(n-1)); printf(s); if(i<n-1)printf(","); } }')
-IFS=',' read -r -a list_s <<< "$list_s"
+SLIST=$(awk -v n=$NREP -v smin=$smin -v smax=$smax 'BEGIN{ for(i=0;i<n;i++){ s=smin*exp(i*log(smax/smin)/(n-1)); printf(s); if(i<n-1)printf(","); } }')
+IFS=',' read -r -a SLIST <<< "$SLIST"
 
 ### get paths to replicas
-list_p=($(echo */))
+PLIST=($(echo */))
 #---------------------------------------------------#
 
 
 ##### PREPARE STRUCTURES FOR SIMULATION
 #---------------------------------------------------#
 ### loop through folders for EM
-for idx in ${!list_p[@]}
+for idx in ${!PLIST[@]}
     do
 
 ### change directory
-        path=${list_p[idx]}
-        cd $path
-        echo $path
+        WORKDIR=${PLIST[idx]}
+        cd $WORKDIR
+        echo $WORKDIR
 
 ### write topology for protein; use CHARMM36 force field in directory
-        gmx pdb2gmx -f Structures/5w8l_clean.pdb -o 5w8l_processed.gro -ff charmm36-feb2021 -water tip3p 
-        gmx pdb2gmx -f Structures/5w8l_monomer.pdb -o 5w8l_monomer.gro -ff charmm36-feb2021 -water tip3p 
+        gmx pdb2gmx -f Structures/6q13_clean.pdb -o 6q13_processed.gro -ff charmm36-feb2021 -water tip3p 
+        gmx pdb2gmx -f Structures/6q13_monomer.pdb -o 6q13_monomer.gro -ff charmm36-feb2021 -water tip3p 
         python Scripts/prep_topology.py topol.top 4
 
 ### convert CHARMM to GROMACS formatting
-        python Scripts/cgenff_charmm2gmx_py3_nx2.py 9YA Structures/9YA.mol2 Structures/9YA.str charmm36-feb2021.ff
+        python Scripts/cgenff_charmm2gmx_py3_nx2.py P8V Structures/P8V.mol2 Structures/P8V.str charmm36-feb2021.ff
         python Scripts/cgenff_charmm2gmx_py3_nx2.py NAI Structures/NAI.mol2 Structures/NAI.str charmm36-feb2021.ff
 
 ### generate GROMACS files for ligands
-        gmx editconf -f 9YA_ini.pdb -o 9YA.gro
+        gmx editconf -f P8V_ini.pdb -o P8V.gro
         gmx editconf -f NAI_ini.pdb -o NAI.gro
 
 ### add ligands to complex
-        python Scripts/gen_complex.py 5w8l_processed.gro 9YA.gro NAI.gro
+        python Scripts/gen_complex.py 6q13_processed.gro P8V.gro NAI.gro
 
 ### add ligands to topology
-        python Scripts/gen_topology.py topol.top 9YA.gro NAI.gro
+        python Scripts/gen_topology.py topol.top P8V.gro NAI.gro
 
 ### create unit cell
         gmx editconf -f complex.gro -o newbox.gro -bt cubic -d 1.0
@@ -88,7 +90,7 @@ for idx in ${!list_p[@]}
 #         gmx grompp -f Setup/em.mdp -c solv_ions.gro -p topol.top -pp processed.top -o em.tpr
 	
 ### mark "hot" atoms for REST2 (i.e. the solute)
-#         python Scripts/mark_hottop.py processed.top Protein_chain_A 9YA NAI
+#         python Scripts/mark_hottop.py processed.top Protein_chain_A P8V NAI
 
 ### scale pre-processed topology for REST2
 #         plumed partial_tempering 1.0 < processed.top > scaled.top 
@@ -103,29 +105,29 @@ for idx in ${!list_p[@]}
     done
 
 ### run multi-directory minimization in preparation for REST2
-mpirun -np $SLURM_NTASKS `which mdrun_mpi` -deffnm em -multidir 0[012] # AUTOMATE REPLICA DEFINITION
+mpirun -np $SLURM_NTASKS `which mdrun_mpi` -deffnm em -multidir $REPS 
 #---------------------------------------------------#
 
 
 ##### RUN NVT EQUILIBRATION
 #---------------------------------------------------#
 ### loop through folders for NVT
-for idx in ${!list_p[@]}
+for idx in ${!PLIST[@]}
     do
 
 ### change directory
-        path=${list_p[idx]}
-        cd $path
-        echo $path
+        WORKDIR=${PLIST[idx]}
+        cd $WORKDIR
+        echo $WORKDIR
 
 ### create index for ligand(s)
-        { echo "\"System\" & ! a H*"; echo q; } | gmx make_ndx -f 9YA.gro -o index_9YA.ndx
+        { echo "\"System\" & ! a H*"; echo q; } | gmx make_ndx -f P8V.gro -o index_P8V.ndx
         { echo "\"System\" & ! a H*"; echo q; } | gmx make_ndx -f NAI.gro -o index_NAI.ndx
 
 ### generate restraints for ligand(s)
-        echo 2 | gmx genrestr -f 9YA.gro -n index_9YA.ndx -o posre_9YA.itp -fc 1000 1000 1000
+        echo 2 | gmx genrestr -f P8V.gro -n index_P8V.ndx -o posre_P8V.itp -fc 1000 1000 1000
         echo 2 | gmx genrestr -f NAI.gro -n index_NAI.ndx -o posre_NAI.itp -fc 1000 1000 1000
-        python Scripts/gen_restraints.py topol.top posre_9YA.itp posre_NAI.itp
+        python Scripts/gen_restraints.py topol.top posre_P8V.itp posre_NAI.itp
 
 #### generate protein/non-protein index for proper thermostat coupling... LIKELY TO BE PROBLEMATIC
         { echo "1 | 13 | 14"; echo q; } | gmx make_ndx -f em.gro -o index.ndx 
@@ -134,7 +136,7 @@ for idx in ${!list_p[@]}
 #         gmx grompp -f Setup/nvt.mdp -c em.gro -r em.gro -p topol.top -pp processed.top -n index.ndx -o nvt.tpr
 
 ### mark "hot" atoms for REST2 (i.e. the solute)
-#         python Scripts/mark_hottop.py processed.top Protein_chain_A 9YA NAI
+#         python Scripts/mark_hottop.py processed.top Protein_chain_A P8V NAI
 
 ### scale pre-processed topology for REST2
 #         plumed partial_tempering 1.0 < processed.top > scaled.top 
@@ -149,26 +151,26 @@ for idx in ${!list_p[@]}
     done
 
 ### run multi-directory NVT in preparation for REST2
-mpirun -np $SLURM_NTASKS `which mdrun_mpi` -deffnm nvt -multidir 0[012]
+mpirun -np $SLURM_NTASKS `which mdrun_mpi` -deffnm nvt -multidir $REPS
 #---------------------------------------------------#
 
 
 ##### RUN NPT EQUILIBRATION
 #---------------------------------------------------#
 ### loop through folders for NPT
-for idx in ${!list_p[@]}
+for idx in ${!PLIST[@]}
     do
 
 ### change directory
-        path=${list_p[idx]}
-        cd $path
-        echo $path
+        WORKDIR=${PLIST[idx]}
+        cd $WORKDIR
+        echo $WORKDIR
 
 ### prepare NPT equilibration
 #         gmx grompp -f Setup/npt.mdp -c nvt.gro -t nvt.cpt -r nvt.gro -p topol.top -pp processed.top -n index.ndx -o npt.tpr
 
 ### mark "hot" atoms for REST2 (i.e. the solute)
-#         python Scripts/mark_hottop.py processed.top Protein_chain_A 9YA NAI
+#         python Scripts/mark_hottop.py processed.top Protein_chain_A P8V NAI
 
 ### scale pre-processed topology for REST2
 #         plumed partial_tempering 1.0 < processed.top > scaled.top 
@@ -183,32 +185,32 @@ for idx in ${!list_p[@]}
     done
 
 ### run multi-directory NPT in preparation for REST2
-mpirun -np $SLURM_NTASKS `which mdrun_mpi` -deffnm npt -multidir 0[012]
+mpirun -np $SLURM_NTASKS `which mdrun_mpi` -deffnm npt -multidir $REPS
 #---------------------------------------------------#
 
 
 ##### RUN REPLICA EXCHANGE W/ SOLUTE SCALING (REST2)
 #---------------------------------------------------#
 ### loop through folders for REST2
-for idx in ${!list_p[@]}
+for idx in ${!PLIST[@]}
     do
 
 ### define replica & path to replica
-        path=${list_p[idx]}
-        scale=${list_s[$nrep-1-idx]}
+        WORKDIR=${PLIST[idx]}
+        SCALE=${SLIST[$NREP-1-idx]}
         
 ### change directory
-        cd $path
-        echo $idx, $path, $scale
+        cd $WORKDIR
+        echo $idx, $WORKDIR, $SCALE
 
 ### prepare REST2 execution
         gmx grompp -f Setup/md.mdp -c npt.gro -t npt.cpt -p topol.top -pp processed.top -n index.ndx -o md.tpr
 
 ### mark "hot" atoms for REST2 (i.e. the solute)
-        python Scripts/mark_hottop.py processed.top Protein_chain_A 9YA NAI
+        python Scripts/mark_hottop.py processed.top Protein_chain_A P8V NAI
 
 ### scale pre-processed topology for REST2
-        plumed partial_tempering $scale < processed.top > scaled.top # AUTOMATE SCALING FACTOR
+        plumed partial_tempering $SCALE < processed.top > scaled.top 
         mv scaled.top scaled_bad.top
         head -n -11 scaled_bad.top > scaled.top # DUMB
 
@@ -219,19 +221,20 @@ for idx in ${!list_p[@]}
     done
 
 ### run multi-directory REST2 
-mpirun -np $SLURM_NTASKS `which mdrun_mpi` -deffnm md -plumed Setup/plumed.dat -multidir 0[012] -replex 100 -hrex -dlb no -dhdl dhdl.xvg -nstlist 10
+mpirun -np $SLURM_NTASKS `which mdrun_mpi` -deffnm md -plumed Setup/plumed.dat -multidir $REPS -replex 100 -hrex -dlb no -dhdl dhdl.xvg -nstlist 10
 #---------------------------------------------------#
 
 
 ##### RUN SOME PRELIMINARY DATA ANALYSIS
 #---------------------------------------------------#
 ### loop through folders for analysis
-for idx in ${!list_p[@]}
+for idx in ${!PLIST[@]}
     do
 
 ### change directory
-        path=${list_p[idx]} 
-        echo $path
+        WORKDIR=${PLIST[idx]} 
+        cd $WORKDIR
+        echo $WORKDIR
             
 ### clean up trajectory for analysis
         { echo Protein; echo System; } | gmx trjconv -s md.tpr -f md.xtc -o md_clean.xtc -center -pbc mol -ur compact
@@ -241,21 +244,21 @@ for idx in ${!list_p[@]}
         { echo Backbone; echo Backbone; } | gmx rms -s md.tpr -f md_clean.xtc -o md_rmsd.xvg -tu ns
         python Scripts/parse_xvg.py md_rmsd.xvg
 
-### calculate RMSD over simulation for ligand (9YA)
-        { echo 13; echo 13; } | gmx rms -s md.tpr -f md_clean.xtc -o md_rmsd_9YA.xvg -tu ns
-        python Scripts/parse_xvg.py md_rmsd_9YA.xvg
+### calculate RMSD over simulation for ligand (P8V)
+        { echo 13; echo 13; } | gmx rms -s md.tpr -f md_clean.xtc -o md_rmsd_P8V.xvg -tu ns
+        python Scripts/parse_xvg.py md_rmsd_P8V.xvg
 
 ### calculate RMSD over simulation for cofactor (NAI)
         { echo 14; echo 14; } | gmx rms -s md.tpr -f md_clean.xtc -o md_rmsd_NAI.xvg -tu ns
         python Scripts/parse_xvg.py md_rmsd_NAI.xvg
 
 ### calculate distance b/w ligand & cofactor
-        gmx pairdist -s md.tpr -f md_clean.xtc  -ref 'resname 9YA and name C31 N32 C33 C34 S35' -sel 'resname NAI and name N1N C2N C3N C4N C5N C6N' -o dist_9YA_NAI.xvg
-        python Scripts/parse_xvg.py dist_9YA_NAI.xvg
+        gmx pairdist -s md.tpr -f md_clean.xtc  -ref 'resname P8V and name C18 N19 C20 C21 S22' -sel 'resname NAI and name N1N C2N C3N C4N C5N C6N' -o dist_P8V_NAI.xvg
+        python Scripts/parse_xvg.py dist_P8V_NAI.xvg
 
 ### calculate distance b/w ligand & residues where halogen bond might exist in P8V
-        gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resname 9YA and name H06' -sel 'resid 139 and name CB' -o dist_9YAH_139.xvg -tu ns
-        python Scripts/parse_xvg.py dist_9YAH_139.xvg
+        gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resname P8V and name F35' -sel 'resid 139 and name CB' -o dist_P8VF_139.xvg -tu ns
+        python Scripts/parse_xvg.py dist_P8VF_139.xvg
 
 ### calculate distances b/w important residues
         gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resid 102 and name CA' -sel 'resid 238 and name CD2' -o dist_102_238.xvg -tu ns
@@ -270,9 +273,9 @@ for idx in ${!list_p[@]}
         python Scripts/parse_xvg.py dist_102_238.xvg dist_103_241.xvg dist_105_137.xvg dist_108_238.xvg
 
 ### calculate distances b/w ligand & residues
-        gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resname 9YA and name O38' -sel 'resid 168 and name NH1' -o dist_9YA_168-1.xvg -tu ns
-        gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resname 9YA and name O37' -sel 'resid 168 and name NH2' -o dist_9YA_168-2.xvg -tu ns
-        python Scripts/parse_xvg.py dist_9YA_168-1.xvg dist_9YA_168-2.xvg
+        gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resname P8V and name O25' -sel 'resid 168 and name NH1' -o dist_P8V_168-1.xvg -tu ns
+        gmx pairdist -s md.tpr -f md_clean.xtc -ref 'resname P8V and name O24' -sel 'resid 168 and name NH2' -o dist_P8V_168-2.xvg -tu ns
+        python Scripts/parse_xvg.py dist_P8V_168-1.xvg dist_P8V_168-2.xvg
 
 ### count hydrogen bonds b/w protein & ligand
         { echo 1; echo 13; } | gmx hbond -s md.tpr -f md_clean.xtc -num md_hbnum.xvg -tu ns
@@ -290,12 +293,13 @@ for idx in ${!list_p[@]}
 ##### CLEAN UP THE DIRECTORY
 #---------------------------------------------------#
 ### loop through folders for clean up
-for idx in ${!list_p[@]}
+for idx in ${!PLIST[@]}
     do
 
 ### change directory
-        path=${list_p[idx]}
-        echo $path
+        WORKDIR=${PLIST[idx]}
+        cd $WORKDIR
+        echo $WORKDIR
         
 ### move data to directory
         mkdir Data
