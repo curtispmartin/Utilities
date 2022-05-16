@@ -35,11 +35,11 @@ smax=1.0
 
 ### set number of replicas based on how many directories present
 REPS=$(find . -mindepth 1 -maxdepth 1 -type d -print0 | xargs -0 ls -d) # get replica directories & sort numerically
-NREP=$(echo $REPS | wc -l | bc) # get number of replicas as defined by directories
+NREP=$(echo $REPS | wc -w | bc) # get number of replicas as defined by directories
 
 ### generate scaling factors using geometric distribution
 SLIST=$(awk -v n=$NREP -v smin=$smin -v smax=$smax 'BEGIN{ for(i=0;i<n;i++){ s=smin*exp(i*log(smax/smin)/(n-1)); printf(s); if(i<n-1)printf(","); } }')
-IFS=',' read -r -a SLIST <<< "$SLIST"
+# IFS=',' read -r -a SLIST <<< "$SLIST"
 
 ### get paths to replicas
 PLIST=($(echo */))
@@ -197,7 +197,7 @@ for idx in ${!PLIST[@]}
 
 ### define replica & path to replica
         WORKDIR=${PLIST[idx]}
-        SCALE=${SLIST[$NREP-1-idx]}
+        SCALE=${SLIST[$NREP-idx-1]}
         
 ### change directory
         cd $WORKDIR
