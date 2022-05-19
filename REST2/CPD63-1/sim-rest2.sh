@@ -39,7 +39,7 @@ NREP=$(echo $REPS | wc -w | bc) # get number of replicas as defined by directori
 
 ### generate scaling factors using geometric distribution
 SLIST=$(awk -v n=$NREP -v smin=$smin -v smax=$smax 'BEGIN{ for(i=0;i<n;i++){ s=smin*exp(i*log(smax/smin)/(n-1)); printf(s); if(i<n-1)printf(","); } }')
-# IFS=',' read -r -a SLIST <<< "$SLIST"
+IFS=',' read -r -a SLIST <<< "$SLIST"
 
 ### get paths to replicas
 PLIST=($(echo */))
