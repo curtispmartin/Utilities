@@ -26,40 +26,55 @@ import seaborn as sns
 
 ##### MAXIMIZE USER INPUT TO IMPROVE WORKFLOW GENERALIZATION
 #----------------------------------------------------------------------------#
+### get & format user inputs
+filepath = os.path.abspath(sys.argv[1])
+dict_args = dict(arg.split('=') for arg in sys.argv[2:])
+
 ### set confidence for determining "statistical significance"
-alpha = 0.05
+if '--alpha' in dict_args.keys():
+    alpha = float(dict_args['--alpha'])
+    print(f'\nAlpha = {alpha:0.2f}...')
+else:
+    alpha = 0.05
+    print(f'\nSetting alpha to {alpha:0.2f}...')
 
 ### set threshold for determining "high fold-change"
-fcthresh = 1.5
+if '--fc' in dict_args.keys():
+    fcthresh = float(dict_args['--fc'])
+    print(f'Fold-change = {fcthresh:0.2f}...')
+else:
+    fcthresh = 1.5
+    print(f'Setting fold-change threshold to {fcthresh:0.2f}...')
 
 ### set flag for labeling points (0 means no label; 1 means label)
-label_flag = 0
+if '--label' in dict_args.keys():
+    label_flag = 1
+    print('Labeling points...')
+else:
+    label_flag = 0
 
-### define data directory... helps keep things organized!
-path_data = f'{os.getcwd()}/Data'
-
-### have the user select in the input data
-datafiles = pd.Series(os.listdir(path_data))
-filename = datafiles.loc[int(input(f'\n{datafiles}\n\nSelect index of input file for analysis: '))].split('.')[0]
+### get filename & path to data from user input
+# datafiles = pd.Series(os.listdir(path_data))
+# filename = datafiles.loc[int(input(f'\n{datafiles}\n\nSelect index of input file for analysis: '))].split('.')[0]
+filename = os.path.split(filepath)[-1].split('.')[0]
+path_data = os.path.split(filepath)[0]
 
 ### have the user select which sheet in data
-datasheets = pd.Series(pd.ExcelFile(f'{path_data}/{filename}.xlsx').sheet_names)
+# datasheets = pd.Series(pd.ExcelFile(f'{path_data}/{filename}.xlsx').sheet_names)
+datasheets = pd.Series(pd.ExcelFile(filepath).sheet_names)
 sheetname = datasheets.loc[int(input(f'\n{datasheets}\n\nSelect index of sheet to use for analysis: '))]
-
-### information for loading data
-# filename = 'P917-Appendix1-12-IP-samples-MS-data-Summary' # name of spreadsheet (w/o the extension)
-# sheetname = 'Summary' # name of sheet of interest w/i file
 #----------------------------------------------------------------------------#
 
 
 ##### LOAD, CLEAN, & SELECT DATA
 #----------------------------------------------------------------------------#
 ### load data
-# data = pd.read_excel(io=f'{filename}.xlsx', sheet_name=sheetname)
-data = pd.read_excel(io=f'{path_data}/{filename}.xlsx', sheet_name=sheetname)
+# data = pd.read_excel(io=f'{path_data}/{filename}.xlsx', sheet_name=sheetname)
+data = pd.read_excel(io=filepath, sheet_name=sheetname)
 
 ### define & make output directory... helps keep things organized!
-path_outp = f'{os.getcwd()}/Output/{filename}'
+# path_outp = f'{os.getcwd()}/Output/{filename}'
+path_outp = os.path.join(os.getcwd(), 'Output', filename)
 if not os.path.exists(path_outp):
     os.mkdir(path_outp)
 
@@ -198,7 +213,7 @@ ax.set_ylabel('$-log_{10}$(p-value)')
 plt.legend(title=f'Fold change > {fcthresh}', loc='upper right', ncol=2)
 plt.title(f'Volcano Plot ({oname})')
 plt.savefig(f'{path_outp}/vp_{oname}.png', bbox_inches='tight', dpi=300)
-plt.show()
+# plt.show()
 
 ### write data to file
 if label_flag == 0:
