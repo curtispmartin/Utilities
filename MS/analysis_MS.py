@@ -177,14 +177,14 @@ ymin_fc = -np.log10(alpha) / (ymax - ymin)
 ymax_fc = 0.95
 
 ### make a volcano plot
-palette = {'Yes':'Navy', 'No':'Gray'}
+palette = {'Yes':'Blue', 'No':'Silver'}
 fig, ax = plt.subplots(1, 1, figsize=(8,6))
 
 sns.scatterplot(x='log2(FC)', y='-log10(p)', hue='HighFC', data=df_vol, palette=palette, s=20, edgecolor=None, lw=0, ax=ax)
-ax.axhline(y=-np.log10(alpha), xmin=xmin_alpha, xmax=0.5-xmax_alpha, color='C3', ls='--')
-ax.axhline(y=-np.log10(alpha), xmin=0.5+xmax_alpha, xmax=1.0-xmin_alpha, color='C3', ls='--')
-ax.axvline(x=-fcthresh_log2, ymin=ymin_fc, ymax=ymax_fc, color='C3', ls='--')
-ax.axvline(x=fcthresh_log2, ymin=ymin_fc, ymax=ymax_fc, color='C3', ls='--')
+# ax.axhline(y=-np.log10(alpha), xmin=xmin_alpha, xmax=0.5-xmax_alpha, color='C3', ls='--')
+# ax.axhline(y=-np.log10(alpha), xmin=0.5+xmax_alpha, xmax=1.0-xmin_alpha, color='C3', ls='--')
+# ax.axvline(x=-fcthresh_log2, ymin=ymin_fc, ymax=ymax_fc, color='C3', ls='--')
+# ax.axvline(x=fcthresh_log2, ymin=ymin_fc, ymax=ymax_fc, color='C3', ls='--')
 
 if label_flag == 1:
     for idx in range(df_vol.shape[0]):
@@ -194,7 +194,8 @@ ax.set_xlim([xmin, xmax])
 ax.set_xlabel('$log_{2}$(Fold Change)')
 ax.set_ylim([ymin, ymax])
 ax.set_ylabel('$-log_{10}$(p-value)')
-plt.legend(title=f'$log_{2}$(FC) > {fcthresh_log2:0.2f}', loc='upper right')
+# plt.legend(title=f'$log_{2}$(FC) > {fcthresh_log2:0.2f}', loc='upper right')
+plt.legend(title=f'Fold change > {fcthresh}', loc='upper right', ncol=2)
 plt.title(f'Volcano Plot ({oname})')
 plt.savefig(f'{path_outp}/vp_{oname}.png', bbox_inches='tight', dpi=300)
 plt.show()

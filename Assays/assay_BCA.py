@@ -23,14 +23,16 @@ import statsmodels.formula.api as sm
 #----------------------------------------------------------------------------#
 ### get & format user inputs
 l_inputs = sys.argv
-file = l_inputs[l_inputs.index('-f') + 1].split('.')[0]
-lum_cell = int(l_inputs[l_inputs.index('--ref') + 1])
 
 ### give exception if options not properly defined
 if '-f' not in l_inputs:
-    raise Exception('Warning! No filepath detected. Exiting...\n')
+    raise Exception('Warning! No filepath detected (provide -f option). Exiting...')
 if '--ref' not in l_inputs:
-    raise Exception('Warning! No reference column detected. Exiting...\n')
+    raise Exception('Warning! No reference column detected (provide --ref option). Exiting...')
+
+### parse user input
+file = l_inputs[l_inputs.index('-f') + 1].split('.')[0]
+lum_cell = int(l_inputs[l_inputs.index('--ref') + 1])
 
 ### call data
 data = pd.read_excel(f'{file}.xlsx', index_col='Unnamed: 0')
