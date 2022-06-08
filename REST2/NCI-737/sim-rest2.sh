@@ -12,7 +12,7 @@
 #SBATCH --mail-user=cpmart405@gmail.com
 #SBATCH --partition=multinode
 #SBATCH --constraint=x2695
-#SBATCH --time=48:00:00
+#SBATCH --time=72:00:00
 #SBATCH --nodes=20
 #SBATCH --ntasks-per-node=28
 #SBATCH --ntasks-per-core=1
@@ -30,16 +30,16 @@ module load python
 ##### SET REST2 PARAMETERS
 #---------------------------------------------------#
 ### set effective temperature range 
-smin=0.3
-smax=1.0
+smin=300
+smax=572
 
 ### set number of replicas based on how many directories present
 REPS=$(find . -mindepth 1 -maxdepth 1 -type d -print0 | xargs -0 ls -d) # get replica directories & sort numerically
 NREP=$(echo $REPS | wc -w | bc) # get number of replicas as defined by directories
 
 ### generate scaling factors using geometric distribution
-SLIST=$(awk -v n=$NREP -v smin=$smin -v smax=$smax 'BEGIN{ for(i=0;i<n;i++){ s=smin*exp(i*log(smax/smin)/(n-1)); printf(s); if(i<n-1)printf(","); } }')
-IFS=',' read -r -a SLIST <<< "$SLIST"
+SLIST=$(awk -v n=$NREP -v smin=$smin -v smax=$smax 'BEGIN{ for(i=0;i<n;i++){ s=smin/(smin*exp(i*log(smax/smin)/(n-1))); printf(s); if(i<n-1)printf(","); } }')
+IFS=',' read -a SLIST <<< "$SLIST"
 
 ### get paths to replicas
 PLIST=($(echo */))
@@ -98,7 +98,6 @@ for idx in ${!PLIST[@]}
 #         head -n -11 scaled_bad.top > scaled.top # DUMB
 		
 ### regenerate .tpr file using scaled topology
-#         gmx grompp -f Setup/em.mdp -c solv_ions.gro -p scaled.top -o em.tpr
         gmx grompp -f Setup/em.mdp -c solv_ions.gro -p topol.top -o em.tpr
         cd ..
 
@@ -197,7 +196,7 @@ for idx in ${!PLIST[@]}
 
 ### define replica & path to replica
         WORKDIR=${PLIST[idx]}
-        SCALE=${SLIST[$NREP-idx-1]}
+        SCALE=${SLIST[idx]}
         
 ### change directory
         cd $WORKDIR
@@ -207,7 +206,7 @@ for idx in ${!PLIST[@]}
         gmx grompp -f Setup/md.mdp -c npt.gro -t npt.cpt -p topol.top -pp processed.top -n index.ndx -o md.tpr
 
 ### mark "hot" atoms for REST2 (i.e. the solute)
-        python Scripts/mark_hottop.py processed.top Protein_chain_A P8V NAI
+        python Scripts/mark_hottop.py -p processed.top -i Setup/rest.json
 
 ### scale pre-processed topology for REST2
         plumed partial_tempering $SCALE < processed.top > scaled.top 
