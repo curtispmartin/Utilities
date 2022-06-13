@@ -9,7 +9,8 @@ Contains scripts developed to speed up cell assay analyses.
 -----
 
 ## FEP
-Contains scripts written to execute free energy perturbations (FEP) w/ replica exhange (of some variant). WIP. Not even close to being ready. 
+Contains scripts written to execute free energy perturbations (FEP) w/ single trajectories (for now). WIP. 
+- Requires generation of ligand topologies for each perturbation via [SMArt](https://github.com/curtispmartin/Utilities/tree/master/SMArt). 
 
 -----
 
@@ -47,6 +48,13 @@ All other code pulled (or slightly modified) from **MD** scripts, though the IO 
 Code written to enable simple implementation of a random forest regression model adapted to time-series forecasting. 
 - `fxn_RFR.py` enables simple constructions & validation of a time-series random forest model using the `build_model` class. 
 - `env_RFR.yml` provides a virtual environment for simple use of code. Just clone & go. 
+
+-----
+
+## SMArt
+Code pulled from [SMArt repository](https://github.com/drazen-petrov/SMArt) for systematically generating single topologies for FEP via GROMACS.
+- `gen_feptop.py` creates topology using SMArt. 
+- `env_smart.yml` contains packages required for simple replication. 
 
 -----
 
