@@ -52,7 +52,7 @@ Code written to enable simple implementation of a random forest regression model
 -----
 
 ## SMArt
-Code pulled from [SMArt repository](https://github.com/drazen-petrov/SMArt) for systematically generating single topologies for FEP via GROMACS.
+Code pulled from [SMArt repository](https://github.com/drazen-petrov/SMArt) for systematically generating single topologies for FEP via GROMACS. Since this module is used for preprocessing, ligand data is also included in the [Ligands directory](https://github.com/curtispmartin/Utilities/tree/master/SMArt/Ligands). 
 - `gen_feptop.py` creates topology using SMArt. 
 - `env_smart.yml` contains packages required for simple replication. 
 
