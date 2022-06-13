@@ -1,0 +1,24 @@
+name: smart
+channels:
+  - conda-forge
+  - tpeulen
+dependencies:
+  - numpy
+  - pandas
+  - matplotlib
+  - scipy
+  - pyyaml
+  - jupyter
+  - jupyterlab
+  - scikit-build
+  - setuptools
+  - pymbar
+  - mdtraj
+  - pymol-open-source
+  - pytest
+  - sphinx
+  - nbsphinx
+  - pip
+  - pip:
+    - sphinx-rtd-theme
+    - sphinx-argparse
