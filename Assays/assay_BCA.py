@@ -44,12 +44,13 @@ data = pd.read_excel(f'{file}.xlsx', index_col='Unnamed: 0')
 ### set volume of sample in wellS
 vol_cell = 1 # in ul... IS THIS NEEDED THOUGH? RETHINK.
 
-### set location of 'Reference' column (i.e. BCA standard)
-# lum_cell = 11
-
 ### set dilution concentrations & volumes
-vol_dil = 60 # ul
 conc_dil = 1 # ug/ul
+if '--dil' in l_inputs:
+    vol_dil = int(l_inputs[l_inputs.index('--dil') + 1]) # ul
+else:
+    vol_dil = 60 # ul
+print(f'Setting dilution volume to {vol_dil} ul...')
 
 ### set volume percentage desired for lysis buffer addition
 conc_lys = 0.20 
@@ -88,7 +89,6 @@ ax.set_ylabel('Concentration [ug/ul]')
 plt.savefig(f'{file}_regression.png', bbox_inches='tight', dpi=300)
 plt.show()
 
-
 ### apply regression model to generate concentrations
 df_conc = data.apply(lambda l: regression(model=model, lum=l, vol_cell=vol_cell))
 df_conc = df_conc.loc[:, df_conc.columns != 'Concentration'].copy()
@@ -107,7 +107,7 @@ ax.xaxis.tick_top()
 # plt.savefig(f'{file}_processed.png', bbox_inches='tight', dpi=300)
 plt.show()
 
-### save data to file is desired...
+### save data to file if desired...
 # df_conc.to_excel(f'{file}_processed.xlsx')
 
 
@@ -120,6 +120,7 @@ def calc_vol(conc_sol, conc_dil, vol_dil):
 ### apply function to transformed data
 df_conc_vol = df_conc.apply(lambda l: calc_vol(conc_sol=l, conc_dil=conc_dil, vol_dil=vol_dil))
 
+
 ### plot normalized volumes for comparison
 fig, ax = plt.subplots(1, 1, figsize=(10,6))
 
@@ -131,7 +132,7 @@ ax.xaxis.tick_top()
 plt.savefig(f'{file}_processed.png', bbox_inches='tight', dpi=300)
 plt.show()
 
-### save data to file is desired...
+### save data to file if desired...
 # df_conc_vol.to_excel(f'{file}_processed_vol.xlsx')
 
 
